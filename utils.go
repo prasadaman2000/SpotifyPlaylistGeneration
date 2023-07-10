@@ -12,7 +12,12 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-var ErrPlaylistNotFound = errors.New("utils: playlist not found")
+const playlistAddBatchSize = 100
+
+var (
+	ErrPlaylistNotFound  = errors.New("utils: playlist not found")
+	playlistItemMapCache = make(map[spotify.ID]map[spotify.ID]bool, 0)
+)
 
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
 	tok, err := auth.Token(r.Context(), state, r)
@@ -126,17 +131,31 @@ func GetPlaylistByName(ctx context.Context, client *spotify.Client, toFind strin
 	return spotify.SimplePlaylist{}, ErrPlaylistNotFound
 }
 
+// cached lookup of set of track ids found in a playlist. useful for functions that need
+// to verify playlist membership many times (such as InTrackInPlaylist)
+func GetTrackIDSetFromPlaylist(ctx context.Context, client *spotify.Client, playlist spotify.SimplePlaylist) (map[spotify.ID]bool, error) {
+	trackSet, ok := playlistItemMapCache[playlist.ID]
+	if !ok {
+		playlistItems, err := GetItemsFromPlaylist(ctx, client, playlist.ID)
+		if err != nil {
+			return nil, err
+		}
+		trackSet = make(map[spotify.ID]bool, 0)
+		for _, item := range playlistItems {
+			trackSet[item.Track.Track.ID] = true
+		}
+		playlistItemMapCache[playlist.ID] = trackSet
+	}
+	return trackSet, nil
+}
+
 func IsTrackInPlaylist(ctx context.Context, client *spotify.Client, playlist spotify.SimplePlaylist, track *spotify.FullTrack) (bool, error) {
-	playlistItems, err := GetItemsFromPlaylist(ctx, client, playlist.ID)
+	trackSet, err := GetTrackIDSetFromPlaylist(ctx, client, playlist)
 	if err != nil {
 		return false, err
 	}
-	for _, item := range playlistItems {
-		if item.Track.Track.ID == track.ID {
-			return true, nil
-		}
-	}
-	return false, nil
+	_, ok := trackSet[track.ID]
+	return ok, nil
 }
 
 // adds tracks to a playlist. if a duplicate is found, do not add.
@@ -156,8 +175,9 @@ func AddTracksToPlaylist(ctx context.Context, client *spotify.Client, playlist s
 		return nil
 	}
 	idx := 0
-	for idx = 0; idx < len(tracksToAdd); idx += 100 {
-		_, err := client.AddTracksToPlaylist(ctx, playlist.ID, tracksToAdd[idx:int(math.Min(float64(len(tracksToAdd)), float64(idx+100)))]...)
+	// batched add because spotify doesn't support adding more than 100 tracks at a time
+	for idx = 0; idx < len(tracksToAdd); idx += playlistAddBatchSize {
+		_, err := client.AddTracksToPlaylist(ctx, playlist.ID, tracksToAdd[idx:int(math.Min(float64(len(tracksToAdd)), float64(idx+playlistAddBatchSize)))]...)
 		if err != nil {
 			return err
 		}

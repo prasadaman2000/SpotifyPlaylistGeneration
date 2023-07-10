@@ -55,12 +55,10 @@ func main() {
 	// SET THIS TO THE FUNCTION YOU WANT FROM playlistgens.go
 	// The function must return a map[string][]*spotify.FullTrack
 	playlistGenFunc = MonthlyPlaylists
-
 	playlists, err := playlistGenFunc(ctx, client)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-
 	for playlistName, trackList := range playlists {
 		playlistToAddTo, err := CreateOrGetPlaylistByName(ctx, client, playlistName)
 		if err != nil {
