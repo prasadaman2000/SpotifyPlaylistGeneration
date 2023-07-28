@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,13 +21,15 @@ var (
 		spotifyauth.ScopePlaylistModifyPublic,
 		spotifyauth.ScopePlaylistReadPrivate,
 		spotifyauth.ScopePlaylistReadCollaborative))
-	ch    = make(chan *spotify.Client)
-	state = "somestate"
+	ch     = make(chan *spotify.Client)
+	state  = "somestate"
+	dryrun = flag.Bool("dryrun", true, "--dryrun=true|false, default is true")
 )
 
 var playlistGenFunc func(context.Context, *spotify.Client) (map[string][]*spotify.FullTrack, error)
 
 func main() {
+	flag.Parse()
 	// /callback called by authorization routine
 	http.HandleFunc("/callback", CompleteAuth)
 	// default handler
@@ -54,12 +57,16 @@ func main() {
 
 	// SET THIS TO THE FUNCTION YOU WANT FROM playlistgens.go
 	// The function must return a map[string][]*spotify.FullTrack
-	playlistGenFunc = MonthlyPlaylists
+	playlistGenFunc = PlaylistsByArtist
 	playlists, err := playlistGenFunc(ctx, client)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
 	for playlistName, trackList := range playlists {
+		if *dryrun {
+			fmt.Printf("Dry run: playlist %v has %v tracks\n", playlistName, len(trackList))
+			continue
+		}
 		playlistToAddTo, err := CreateOrGetPlaylistByName(ctx, client, playlistName)
 		if err != nil {
 			log.Fatalf("could not get playlist %v\n", err)

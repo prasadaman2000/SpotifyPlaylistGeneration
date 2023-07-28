@@ -16,7 +16,8 @@ const playlistAddBatchSize = 100
 
 var (
 	ErrPlaylistNotFound  = errors.New("utils: playlist not found")
-	playlistItemMapCache = make(map[spotify.ID]map[spotify.ID]bool, 0)
+	playlistItemMapCache = make(map[spotify.ID]map[spotify.ID]bool)
+	artistGenreMapCache  = make(map[spotify.ID][]string)
 )
 
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
@@ -204,4 +205,37 @@ func CreateOrGetPlaylistByName(ctx context.Context, client *spotify.Client, name
 		return spotify.SimplePlaylist{}, err
 	}
 	return playlist, nil
+}
+
+// cached lookup of genres from artist. cached to improve performance
+// in situations where many calls to GetGenresFromArtist are made
+// in quick succession and with the same params
+func GetGenresFromArtist(ctx context.Context, client *spotify.Client, artistID spotify.ID) ([]string, error) {
+	if genres, ok := artistGenreMapCache[artistID]; ok {
+		return genres, nil
+	}
+	fullArtist, err := client.GetArtist(ctx, artistID)
+	if err != nil {
+		return nil, err
+	}
+	artistGenreMapCache[artistID] = append(artistGenreMapCache[artistID], fullArtist.Genres...)
+	return artistGenreMapCache[artistID], nil
+}
+
+func GetGenresFromTrack(ctx context.Context, client *spotify.Client, track *spotify.FullTrack) ([]string, error) {
+	genreSet := make(map[string]bool)
+	for _, artist := range track.Artists {
+		artistGenres, err := GetGenresFromArtist(ctx, client, artist.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, genre := range artistGenres {
+			genreSet[genre] = true
+		}
+	}
+	var genres []string
+	for k := range genreSet {
+		genres = append(genres, k)
+	}
+	return genres, nil
 }
