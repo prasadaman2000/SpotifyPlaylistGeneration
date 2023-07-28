@@ -24,6 +24,10 @@ type PlaylistGensResponse struct {
 	playlists map[string][]*spotify.FullTrack
 }
 
+type PlaylistGenRequest struct {
+	numPlaylists int
+}
+
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
 	tok, err := auth.Token(r.Context(), state, r)
 	if err != nil {
