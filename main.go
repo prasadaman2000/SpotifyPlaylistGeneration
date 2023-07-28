@@ -26,7 +26,7 @@ var (
 	dryrun = flag.Bool("dryrun", true, "--dryrun=true|false, default is true")
 )
 
-var playlistGenFunc func(context.Context, *spotify.Client) (map[string][]*spotify.FullTrack, error)
+var playlistGenFunc func(context.Context, *spotify.Client) (*PlaylistGensResponse, error)
 
 func main() {
 	flag.Parse()
@@ -58,11 +58,11 @@ func main() {
 	// SET THIS TO THE FUNCTION YOU WANT FROM playlistgens.go
 	// The function must return a map[string][]*spotify.FullTrack
 	playlistGenFunc = PlaylistsByArtist
-	playlists, err := playlistGenFunc(ctx, client)
+	resp, err := playlistGenFunc(ctx, client)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	for playlistName, trackList := range playlists {
+	for playlistName, trackList := range resp.playlists {
 		if *dryrun {
 			fmt.Printf("Dry run: playlist %v has %v tracks\n", playlistName, len(trackList))
 			continue

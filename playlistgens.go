@@ -8,9 +8,13 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
+type PlaylistGensResponse struct {
+	playlists map[string][]*spotify.FullTrack
+}
+
 // TODO add support for generation options
 
-func MonthlyPlaylists(ctx context.Context, client *spotify.Client) (map[string][]*spotify.FullTrack, error) {
+func MonthlyPlaylists(ctx context.Context, client *spotify.Client) (*PlaylistGensResponse, error) {
 	totalTracks, err := GetAllUniquePlaylistItems(ctx, client)
 	if err != nil {
 		return nil, err
@@ -23,10 +27,12 @@ func MonthlyPlaylists(ctx context.Context, client *spotify.Client) (map[string][
 		}
 		genPlaylists[addTime.Month().String()] = append(genPlaylists[addTime.Month().String()], track.Track.Track)
 	}
-	return genPlaylists, nil
+	return &PlaylistGensResponse{
+		playlists: genPlaylists,
+	}, nil
 }
 
-func DailyPlaylists(ctx context.Context, client *spotify.Client) (map[string][]*spotify.FullTrack, error) {
+func DailyPlaylists(ctx context.Context, client *spotify.Client) (*PlaylistGensResponse, error) {
 	location, _ := time.LoadLocation("America/Los_Angeles")
 	totalTracks, err := GetAllUniquePlaylistItems(ctx, client)
 	if err != nil {
@@ -41,12 +47,14 @@ func DailyPlaylists(ctx context.Context, client *spotify.Client) (map[string][]*
 		}
 		genPlaylists[localAddTime.Weekday().String()] = append(genPlaylists[localAddTime.Weekday().String()], track.Track.Track)
 	}
-	return genPlaylists, nil
+	return &PlaylistGensResponse{
+		playlists: genPlaylists,
+	}, nil
 }
 
 // generates playlists for top 10 genres in your library.
 // TODO implement option to take num playlists to generate
-func PlaylistsByGenre(ctx context.Context, client *spotify.Client) (map[string][]*spotify.FullTrack, error) {
+func PlaylistsByGenre(ctx context.Context, client *spotify.Client) (*PlaylistGensResponse, error) {
 	const numPlaylists = 10
 	totalTracks, err := GetAllUniquePlaylistItems(ctx, client)
 	if err != nil {
@@ -78,13 +86,15 @@ func PlaylistsByGenre(ctx context.Context, client *spotify.Client) (map[string][
 		}
 		genreMapToRet[poppedGenre] = tracksInGenreMap[poppedGenre]
 	}
-	return genreMapToRet, nil
+	return &PlaylistGensResponse{
+		playlists: genreMapToRet,
+	}, nil
 }
 
 // generates playlists for top 10 artists in your library.
 // TODO implement option to take num playlists to generate
-func PlaylistsByArtist(ctx context.Context, client *spotify.Client) (map[string][]*spotify.FullTrack, error) {
-	const numPlaylists = 10
+func PlaylistsByArtist(ctx context.Context, client *spotify.Client) (*PlaylistGensResponse, error) {
+	const numPlaylists = 11
 	totalTracks, err := GetAllUniquePlaylistItems(ctx, client)
 	if err != nil {
 		return nil, err
@@ -115,5 +125,7 @@ func PlaylistsByArtist(ctx context.Context, client *spotify.Client) (map[string]
 		}
 		artistMapToRet[poppedGenre] = tracksInArtistMap[poppedGenre]
 	}
-	return artistMapToRet, nil
+	return &PlaylistGensResponse{
+		playlists: artistMapToRet,
+	}, nil
 }
