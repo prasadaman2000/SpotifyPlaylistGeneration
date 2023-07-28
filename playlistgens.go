@@ -8,10 +8,6 @@ import (
 	"github.com/zmb3/spotify/v2"
 )
 
-type PlaylistGensResponse struct {
-	playlists map[string][]*spotify.FullTrack
-}
-
 // TODO add support for generation options
 
 func MonthlyPlaylists(ctx context.Context, client *spotify.Client) (*PlaylistGensResponse, error) {

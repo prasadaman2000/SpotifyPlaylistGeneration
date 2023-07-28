@@ -20,6 +20,10 @@ var (
 	artistGenreMapCache  = make(map[spotify.ID][]string)
 )
 
+type PlaylistGensResponse struct {
+	playlists map[string][]*spotify.FullTrack
+}
+
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
 	tok, err := auth.Token(r.Context(), state, r)
 	if err != nil {
