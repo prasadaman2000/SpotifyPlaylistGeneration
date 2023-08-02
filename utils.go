@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"time"
 
@@ -25,8 +24,10 @@ type PlaylistGensResponse struct {
 }
 
 type PlaylistGenRequest struct {
-	numPlaylists int
-	bannedGenres []string
+	numPlaylists   int
+	bannedGenres   []string
+	inputPlaylists []string
+	outputPlaylist string
 }
 
 func Intersection(list1 []string, list2 []string) []string {
@@ -41,6 +42,26 @@ func Intersection(list1 []string, list2 []string) []string {
 		}
 	}
 	return intersection
+}
+
+func IDSetUnion(map1, map2 map[spotify.ID]bool) map[spotify.ID]bool {
+	mapToRet := make(map[spotify.ID]bool, 0)
+	for k := range map1 {
+		mapToRet[k] = true
+	}
+	for k := range map2 {
+		if _, ok := mapToRet[k]; !ok {
+			mapToRet[k] = true
+		}
+	}
+	return mapToRet
+}
+
+func IntMin(num1, num2 int) int {
+	if num1 < num2 {
+		return num1
+	}
+	return num2
 }
 
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
@@ -201,7 +222,7 @@ func AddTracksToPlaylist(ctx context.Context, client *spotify.Client, playlist s
 	idx := 0
 	// batched add because spotify doesn't support adding more than 100 tracks at a time
 	for idx = 0; idx < len(tracksToAdd); idx += playlistAddBatchSize {
-		_, err := client.AddTracksToPlaylist(ctx, playlist.ID, tracksToAdd[idx:int(math.Min(float64(len(tracksToAdd)), float64(idx+playlistAddBatchSize)))]...)
+		_, err := client.AddTracksToPlaylist(ctx, playlist.ID, tracksToAdd[idx:IntMin(len(tracksToAdd), idx+playlistAddBatchSize)]...)
 		if err != nil {
 			return err
 		}

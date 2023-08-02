@@ -57,11 +57,11 @@ func main() {
 
 	// SET THIS TO THE FUNCTION YOU WANT FROM playlistgens.go
 	// The function must return a map[string][]*spotify.FullTrack
-	playlistGenFunc = PlaylistsByArtist
+	playlistGenFunc = CombineIntoPlaylist
 	// Add options here
 	options := &PlaylistGenRequest{
-		numPlaylists: 11,
-		bannedGenres: []string{"trap", "rap", "meme rap"},
+		inputPlaylists: []string{"Things I Like", "seventh month of 2023", "home depot", "meaningless"},
+		outputPlaylist: "pop",
 	}
 	resp, err := playlistGenFunc(ctx, client, options)
 	if err != nil {

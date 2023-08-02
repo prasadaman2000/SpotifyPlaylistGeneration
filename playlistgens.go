@@ -128,3 +128,54 @@ func PlaylistsByArtist(ctx context.Context, client *spotify.Client, req *Playlis
 		playlists: artistMapToRet,
 	}, nil
 }
+
+// for each playlist P_i in the set of n input playlists P, and output playlist O
+// loop through all P_i to find songs in P but not in O, and return a playlist O*
+// that has all the songs in O and in (P - O).
+// Supported options:
+// 		inputPlaylists: the set P defined above. not all playlists have to exist.
+//		outputPlaylist: the playlist O defined above, could possibly not exist yet
+func CombineIntoPlaylist(ctx context.Context, client *spotify.Client, req *PlaylistGenRequest) (*PlaylistGensResponse, error) {
+	const batchSize = 50
+	masterPlaylist, err := GetPlaylistByName(ctx, client, req.outputPlaylist)
+	if err != nil && err != ErrPlaylistNotFound {
+		return nil, err
+	}
+	outputTrackIDMap := make(map[spotify.ID]bool)
+	if err == nil {
+		outputTrackIDMap, err = GetTrackIDSetFromPlaylist(ctx, client, masterPlaylist)
+		if err != nil {
+			return nil, err
+		}
+	}
+	for _, playlistName := range req.inputPlaylists {
+		currPlaylist, err := GetPlaylistByName(ctx, client, playlistName)
+		if err == ErrPlaylistNotFound {
+			fmt.Printf("could not find playlist %v, continuing...\n", playlistName)
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		currPlaylistTrackIDMap, err := GetTrackIDSetFromPlaylist(ctx, client, currPlaylist)
+		if err != nil {
+			return nil, err
+		}
+		outputTrackIDMap = IDSetUnion(outputTrackIDMap, currPlaylistTrackIDMap)
+	}
+	var trackIDList []spotify.ID
+	for trackID := range outputTrackIDMap {
+		trackIDList = append(trackIDList, trackID)
+	}
+	outputPlaylists := make(map[string][]*spotify.FullTrack)
+	for idx := 0; idx < len(trackIDList); idx += batchSize {
+		fullTracks, err := client.GetTracks(ctx, trackIDList[idx:IntMin(len(trackIDList), idx+batchSize)])
+		if err != nil {
+			return nil, err
+		}
+		outputPlaylists[req.outputPlaylist] = append(outputPlaylists[req.outputPlaylist], fullTracks...)
+	}
+	return &PlaylistGensResponse{
+		playlists: outputPlaylists,
+	}, nil
+}
