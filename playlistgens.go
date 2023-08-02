@@ -88,6 +88,7 @@ func PlaylistsByGenre(ctx context.Context, client *spotify.Client, req *Playlist
 // generates playlists for top k artists in your library.
 // Supported options:
 // 		numPlaylists: k, the number of playlists to generate
+//		disallowedGenres: list of genres to not include when generating playlists
 func PlaylistsByArtist(ctx context.Context, client *spotify.Client, req *PlaylistGenRequest) (*PlaylistGensResponse, error) {
 	totalTracks, err := GetAllUniquePlaylistItems(ctx, client)
 	if err != nil {
@@ -96,10 +97,14 @@ func PlaylistsByArtist(ctx context.Context, client *spotify.Client, req *Playlis
 	tracksInArtistMap := make(map[string][]*spotify.FullTrack)
 	for _, track := range totalTracks {
 		artists := track.Track.Track.Artists
-		if err != nil {
-			return nil, err
-		}
 		for _, artist := range artists {
+			genres, err := GetGenresFromArtist(ctx, client, artist.ID)
+			if err != nil {
+				return nil, err
+			}
+			if len(Intersection(req.bannedGenres, genres)) > 0 {
+				continue
+			}
 			tracksInArtistMap[artist.Name] = append(tracksInArtistMap[artist.Name], track.Track.Track)
 		}
 	}

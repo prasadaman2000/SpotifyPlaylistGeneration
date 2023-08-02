@@ -61,6 +61,7 @@ func main() {
 	// Add options here
 	options := &PlaylistGenRequest{
 		numPlaylists: 11,
+		bannedGenres: []string{"trap", "rap", "meme rap"},
 	}
 	resp, err := playlistGenFunc(ctx, client, options)
 	if err != nil {

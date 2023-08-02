@@ -26,6 +26,21 @@ type PlaylistGensResponse struct {
 
 type PlaylistGenRequest struct {
 	numPlaylists int
+	bannedGenres []string
+}
+
+func Intersection(list1 []string, list2 []string) []string {
+	var intersection []string
+	map1 := make(map[string]bool, 0)
+	for _, item := range list1 {
+		map1[item] = true
+	}
+	for _, item := range list2 {
+		if _, ok := map1[item]; ok {
+			intersection = append(intersection, item)
+		}
+	}
+	return intersection
 }
 
 func CompleteAuth(w http.ResponseWriter, r *http.Request) {
